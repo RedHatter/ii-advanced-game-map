@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        ii-advanced-game-map
 // @namespace   http://redhatter.gethub.com
-// @description Adds note takeing and filtering to the game map.
+// @description Adds note takeing and searching to the game map.
 // @include     http://www.improbableisland.com/*
 // @include     http://improbableisland.com/*
 // @version     1
@@ -72,16 +72,21 @@ function openPlace(event)
 
 	info.appendChild(document.createElement('br'));
 
-	var notes = GM_getValue(event.target.parentNode.title);
-
-	if(notes)
-		info.appendChild(document.createTextNode(notes));
+	var noteVal = GM_getValue(event.target.parentNode.title);
+	var notes = document.createTextNode(noteVal ? noteVal : '');
+	info.appendChild(notes);
 
 	info.appendChild(document.createElement('br'));
 	info.appendChild(document.createElement('br'));
 
 	element = document.createElement( 'a' );
-	element.addEventListener("click", function(){editNotes(event.target.parentNode.title);}, false);
+	element.addEventListener("click", function()
+	{
+		var noteVal = event.target.parentNode.title;
+		notes.textContent = editNotes(noteVal);
+		if (noteVal)
+			event.target.innerHTML = '&#9650;';
+	}, false);
 	element.appendChild(document.createTextNode('(Edit Notes)'));
 	info.appendChild(element);
 
@@ -97,7 +102,8 @@ function openPlace(event)
 
 function editNotes(cell)
 {
-	var notes = prompt('',GM_getValue(cell));
+	var noteVal = GM_getValue(cell);
+	var notes = prompt('', noteVal ? noteVal : '');
 	if (notes == '')
 	{
 		GM_deleteValue(cell);
@@ -105,6 +111,8 @@ function editNotes(cell)
 	{
 		GM_setValue(cell,notes);
 	}
+
+	return notes;
 }
 
 function filterMap(event)
@@ -150,6 +158,13 @@ function openMap()
 	bar.addEventListener("mouseup", endMove, true);
 	div.insertBefore(bar, div.firstChild);
 
+	var element = document.createElement('a');
+	element.appendChild(document.createTextNode('x'));
+	element.style.margin = '5px';
+	element.style.cssFloat = 'right';
+	element.addEventListener("click", function(){document.body.removeChild(div);}, false);
+	bar.appendChild(element);
+
 	document.body.insertBefore(div,document.body.firstChild);
 
 	var searchIn = document.createElement( 'input' );
@@ -158,6 +173,7 @@ function openMap()
 	else
 		searchIn.addEventListener("change", filterMap, false);
 
+	searchIn.style.margin = '5px';
 	searchIn.style.cssFloat = 'left';
 	bar.appendChild(searchIn);
 
