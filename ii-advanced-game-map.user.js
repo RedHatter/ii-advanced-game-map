@@ -16,7 +16,12 @@ if(map)
 {
 	GM_setValue('map', '<table cellspacing="1" cellpadding="0" border="0">'+map.innerHTML+'</table>');
 
-	var searchIn = document.createElement( 'input' );
+	var cell = document.evaluate("//a/@href[contains(.,'dir=north')]", document, null, XPathResult.ANY_TYPE, null).iterateNext().textContent;
+	var contains = unescape(cell.slice(cell.indexOf('oloc=')+5,cell.indexOf('&dir')-4)).replace(',',', ');
+	var current = document.evaluate("./tbody/tr/td[contains(@title,'"+contains+"')]", map, null, XPathResult.ANY_TYPE, null).iterateNext();
+	current.style.backgroundColor = '#FF9900';
+
+	var searchIn = document.createElement( 'input' )
 	if (FILTER)
 		searchIn.addEventListener("keyup", filterMap, false);
 	else
