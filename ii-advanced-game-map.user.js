@@ -24,12 +24,13 @@ if(map)
 	var current = document.evaluate("./tbody/tr/td[contains(@title,'"+contains+"')]", map, null, XPathResult.ANY_TYPE, null).iterateNext();
 	current.style.backgroundColor = '#FF9900';
 
-	var element = document.createElement( 'input' )
+	var searchIn = document.createElement( 'input' )
 	if (FILTER)
-		element.addEventListener("keyup", filterMap, false);
+		searchIn.addEventListener("keyup", filterMap, false);
 	else
-		element.addEventListener("change", filterMap, false);
-	map.parentNode.insertBefore(element, map);
+		searchIn.addEventListener("change", filterMap, false);
+	searchIn.setAttribute('placeholder', 'Filter');
+	map.parentNode.insertBefore(searchIn, map);
 
 	radio = document.createElement('input');
 	radio.type = 'checkbox';
@@ -240,7 +241,6 @@ function openMap()
 	div.style.left = '0';
 	div.className = 'sitecenter-lighter';
 	div.style.MozTransform = 'scale('+SCALE+')';
-	div.style.backgroundColor = 'black';
 	div.innerHTML = GM_getValue('map');
 	map = div.firstChild;
 
@@ -259,7 +259,7 @@ function openMap()
 		searchIn.addEventListener("keyup", filterMap, false);
 	else
 		searchIn.addEventListener("change", filterMap, false);
-
+	searchIn.setAttribute('placeholder', 'Filter');
 	searchIn.style.margin = '0 5px';
 	bar.appendChild(searchIn);
 
