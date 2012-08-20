@@ -11,6 +11,9 @@ var FILTER = true;
 var SCALE = 0.75;
 var MARK_NOTES = true;
 
+var radio;
+var count;
+
 var map = document.evaluate("//table[./tbody/tr/td/div/@id = 'maprow_40']", document, null, XPathResult.ANY_TYPE, null).iterateNext();
 if(map)
 {
@@ -21,16 +24,43 @@ if(map)
 	var current = document.evaluate("./tbody/tr/td[contains(@title,'"+contains+"')]", map, null, XPathResult.ANY_TYPE, null).iterateNext();
 	current.style.backgroundColor = '#FF9900';
 
-	var searchIn = document.createElement( 'input' )
+	var element = document.createElement( 'input' )
 	if (FILTER)
-		searchIn.addEventListener("keyup", filterMap, false);
+		element.addEventListener("keyup", filterMap, false);
 	else
-		searchIn.addEventListener("change", filterMap, false);
+		element.addEventListener("change", filterMap, false);
+	map.parentNode.insertBefore(element, map);
 
-	map.parentNode.insertBefore(searchIn, map);
+	radio = document.createElement('input');
+	radio.type = 'checkbox';
+	map.parentNode.insertBefore(radio, map);
+	map.parentNode.insertBefore(document.createTextNode(' Search descriptions '), map);
 
-	var count = document.createElement('span');
+	count = document.createElement('span');
 	map.parentNode.insertBefore(count, map);	
+
+	var element = document.createElement( 'a' );
+	element.addEventListener("click", function(){openView('')}, true);
+	element.appendChild(document.createTextNode(' (View All) '));
+	map.parentNode.insertBefore(element, map);
+
+	element = document.createElement( 'a' );
+	element.addEventListener("click", function()
+	{
+		if(radio.checked)
+			var filter = "[contains(translate(@href, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchIn.value+"')]";
+		else
+			var filter = "[contains(translate(@title, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchIn.value+"')]";
+
+		openView(filter);
+	}, true);
+	element.appendChild(document.createTextNode(' (View Results) '));
+	map.parentNode.insertBefore(element, map);
+
+	element = document.createElement( 'a' );
+	element.addEventListener("click", function(){openView("[contains('"+GM_listValues().join()+"',../@title)]")}, true);
+	element.appendChild(document.createTextNode(' (View Notes) '));
+	map.parentNode.insertBefore(element, map);
 
 	var links = document.evaluate("./tbody/tr/td/a", map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 	for (var i = 0; i < links.snapshotLength; i++)
@@ -64,9 +94,11 @@ insert.parentNode.insertBefore(element, textNode.nextSibling);
 
 function openPlace(event)
 {
-	var parms = event.target.href.split("'");
-	var info = document.getElementById("maprow_"+parms[1]);
-	info.innerHTML = unescape(parms[3]);
+	var mark = event.target.href.indexOf("'",38);
+	var row = event.target.href.slice(38,mark);
+	var html = event.target.href.slice(mark+3,event.target.href.length-3);
+	var info = document.getElementById("maprow_"+row);
+	info.innerHTML = unescape(html);
 
 	info.appendChild(document.createElement('br'));
 	info.appendChild(document.createElement('br'));
@@ -97,10 +129,10 @@ function openPlace(event)
 
 	var element = document.createElement('a');
 	element.appendChild(document.createTextNode(' (Close)'));
-	element.addEventListener("click", function(){contentEval('$("#maprow_'+parms[1]+'").slideUp();');}, false);
+	element.addEventListener("click", function(){contentEval('$("#maprow_'+row+'").slideUp();');}, false);
 	info.appendChild(element);
 
-	contentEval('$("#maprow_'+parms[1]+'").slideDown();');
+	contentEval('$("#maprow_'+row+'").slideDown();');
 
 	event.preventDefault();
 }
@@ -122,6 +154,8 @@ function editNotes(cell)
 
 function filterMap(event)
 {
+	var searchString = event.target.value.toLowerCase();
+
 	var clear = document.evaluate("./tbody/tr/td/a", map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);	
 	for (var i = 0; i < clear.snapshotLength; i++)
 	{
@@ -130,14 +164,70 @@ function filterMap(event)
 		element.parentNode.style.backgroundColor = null;
 	}
 
-	var found = document.evaluate("./tbody/tr/td/a[contains(@title,'"+event.target.value+"')]", map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	if (searchString == '') return;
+
+	if(radio.checked)
+		var found = document.evaluate("./tbody/tr/td/a[contains(translate(@href, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchString+"')]", map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	else
+		var found = document.evaluate("./tbody/tr/td/a[contains(translate(@title, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchString+"')]", map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	
 	for (var i = 0; i < found.snapshotLength; i++)
 	{
 		var element = found.snapshotItem(i);
 		element.style.color = 'white';
 		element.parentNode.style.backgroundColor = 'black';
 	}
+
 	count.innerHTML = ' Count: '+found.snapshotLength;
+}
+
+function openView(filter)
+{
+	//Top popup element
+	div = document.createElement('div');
+	div.style.position = 'absolute';
+	div.style.zIndex = '110';
+	div.style.top = '0';
+	div.style.left = '0';
+	div.className = 'sitecenter-lighter';
+
+	//Dragable bar for moving map
+	bar = document.createElement('div');
+	bar.style.width = '100%';
+	bar.style.height = '20px';
+	bar.addEventListener("mousedown", startMove, true);
+	bar.addEventListener("mouseup", endMove, true);
+	div.appendChild(bar);
+
+	element = document.createElement('a');
+	element.appendChild(document.createTextNode('x'));
+	element.style.margin = '2px 5px';
+	element.style.cssFloat = 'right';
+	element.addEventListener("click", function(e){document.body.removeChild(e.target.parentNode.parentNode);}, false);
+	bar.appendChild(element);
+
+	var text = document.createElement('textarea');
+	text.style.width = '600px';
+	text.style.height = '800px';
+	div.appendChild(text);
+
+	var links = document.evaluate("./tbody/tr/td/a"+filter, map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);	
+	for (var i = 0; i < links.snapshotLength; i++)
+	{
+		var element = links.snapshotItem(i);
+		var html = element.href.slice(element.href.indexOf("'",38)+3,element.href.length-3);
+		var name = unescape(strip(html.slice(0,html.indexOf('</i></strong>'))));
+		var desc = unescape(strip(html.slice(html.indexOf('</i></strong>'))));
+
+		text.value += 'Name: '+name+'\nLocation: '+element.parentNode.title+'\nDescription: '+desc+'\n';
+		var noteVal = GM_getValue(element.parentNode.title);
+		if (noteVal)
+			text.value += 'Notes: '+noteVal+'\n\n';
+		else
+			text.value += '\n';
+	}
+
+	document.body.insertBefore(div,document.body.firstChild);
 }
 
 function openMap()
@@ -150,6 +240,7 @@ function openMap()
 	div.style.left = '0';
 	div.className = 'sitecenter-lighter';
 	div.style.MozTransform = 'scale('+SCALE+')';
+	div.style.backgroundColor = 'black';
 	div.innerHTML = GM_getValue('map');
 	map = div.firstChild;
 
@@ -157,18 +248,9 @@ function openMap()
 	bar = document.createElement('div');
 	bar.style.width = '100%';
 	bar.style.height = '20px';
-	bar.style.textAlign = 'center';
-	bar.innerHTML = "Drag to move";
 	bar.addEventListener("mousedown", startMove, true);
 	bar.addEventListener("mouseup", endMove, true);
 	div.insertBefore(bar, div.firstChild);
-
-	var element = document.createElement('a');
-	element.appendChild(document.createTextNode('x'));
-	element.style.margin = '5px';
-	element.style.cssFloat = 'right';
-	element.addEventListener("click", function(){document.body.removeChild(div);}, false);
-	bar.appendChild(element);
 
 	document.body.insertBefore(div,document.body.firstChild);
 
@@ -178,13 +260,46 @@ function openMap()
 	else
 		searchIn.addEventListener("change", filterMap, false);
 
-	searchIn.style.margin = '5px';
-	searchIn.style.cssFloat = 'left';
+	searchIn.style.margin = '0 5px';
 	bar.appendChild(searchIn);
 
-	var count = document.createElement('span');
-	count.style.cssFloat = 'left';
+	radio = document.createElement('input');
+	radio.type = 'checkbox';
+	bar.appendChild(radio);
+	bar.appendChild(document.createTextNode(' Search descriptions '));
+
+	count = document.createElement('span');
 	bar.appendChild(count);
+
+	var element = document.createElement( 'a' );
+	element.addEventListener("click", function(){openView('')}, true);
+	element.appendChild(document.createTextNode(' (View All) '));
+	bar.appendChild(element);
+
+	element = document.createElement( 'a' );
+	element.addEventListener("click", function()
+	{
+		if(radio.checked)
+			var filter = "[contains(translate(@href, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchIn.value+"')]";
+		else
+			var filter = "[contains(translate(@title, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'),'"+searchIn.value+"')]";
+
+		openView(filter);
+	}, true);
+	element.appendChild(document.createTextNode(' (View Results) '));
+	bar.appendChild(element);
+
+	element = document.createElement( 'a' );
+	element.addEventListener("click", function(){openView("[contains('"+GM_listValues().join()+"',../@title)]")}, true);
+	element.appendChild(document.createTextNode(' (View Notes) '));
+	bar.appendChild(element);
+
+	element = document.createElement('a');
+	element.appendChild(document.createTextNode('x'));
+	element.style.margin = '2px 5px';
+	element.style.cssFloat = 'right';
+	element.addEventListener("click", function(e){document.body.removeChild(e.target.parentNode.parentNode);}, false);
+	bar.appendChild(element);
 
 	var links = document.evaluate("./table/tbody/tr/td/a", div, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 	for (var i = 0; i < links.snapshotLength; i++)
@@ -245,4 +360,11 @@ function contentEval(source) {
   // remove it to clean up.
   document.body.appendChild(script);
   document.body.removeChild(script);
+}
+
+function strip(html)
+{
+	var tmp = document.createElement("DIV");
+	tmp.innerHTML = html;
+	return tmp.textContent;
 }
