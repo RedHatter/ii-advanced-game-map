@@ -59,7 +59,7 @@ if(map)
 	map.parentNode.insertBefore(element, map);
 
 	element = document.createElement( 'a' );
-	element.addEventListener("click", function(){openView("[contains('"+GM_listValues().join()+"',../@title)]")}, true);
+	element.addEventListener("click", function(){openView('[contains("'+GM_listValues().join()+'",@title)]')}, true);
 	element.appendChild(document.createTextNode(' (View Notes) '));
 	map.parentNode.insertBefore(element, map);
 
@@ -72,13 +72,11 @@ if(map)
 
 	if (MARK_NOTES)
 	{
-		for each (var val in GM_listValues())
+		var links = document.evaluate('./tbody/tr/td/a[contains("'+GM_listValues().join()+'",@title)]', map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		for (var i = 0; i < links.snapshotLength; i++)
 		{
-			if (val != 'map')
-			{
-				var element = document.evaluate("./tbody/tr/td[@title='"+val+"']/a", map, null, XPathResult.ANY, null).iterateNext();
-				element.innerHTML = '&#9650;';
-			}
+			var element = links.snapshotItem(i);
+			element.innerHTML = '&#9650;';
 		}
 	}
 }
@@ -110,7 +108,7 @@ function openPlace(event)
 
 	info.appendChild(document.createElement('br'));
 
-	var noteVal = GM_getValue(event.target.parentNode.title);
+	var noteVal = GM_getValue(event.target.title);
 	var notes = document.createTextNode(noteVal ? noteVal : '');
 	info.appendChild(notes);
 
@@ -120,7 +118,7 @@ function openPlace(event)
 	element = document.createElement( 'a' );
 	element.addEventListener("click", function()
 	{
-		var noteVal = event.target.parentNode.title;
+		var noteVal = event.target.title;
 		notes.textContent = editNotes(noteVal);
 		if (noteVal)
 			event.target.innerHTML = '&#9650;';
@@ -221,7 +219,7 @@ function openView(filter)
 		var desc = unescape(strip(html.slice(html.indexOf('</i></strong>'))));
 
 		text.value += 'Name: '+name+'\nLocation: '+element.parentNode.title+'\nDescription: '+desc+'\n';
-		var noteVal = GM_getValue(element.parentNode.title);
+		var noteVal = GM_getValue(element.title);
 		if (noteVal)
 			text.value += 'Notes: '+noteVal+'\n\n';
 		else
@@ -290,7 +288,7 @@ function openMap()
 	bar.appendChild(element);
 
 	element = document.createElement( 'a' );
-	element.addEventListener("click", function(){openView("[contains('"+GM_listValues().join()+"',../@title)]")}, true);
+	element.addEventListener("click", function(){openView('[contains("'+GM_listValues().join()+'",@title)]')}, true);
 	element.appendChild(document.createTextNode(' (View Notes) '));
 	bar.appendChild(element);
 
@@ -307,17 +305,16 @@ function openMap()
 		var element = links.snapshotItem(i);
 		element.addEventListener("click", openPlace, false);
 	}
-
 	if (MARK_NOTES)
 	{
-		for each (var val in GM_listValues())
+		GM_log("./tbody/tr/td/a[contains('"+GM_listValues().join()+"',@title)]");
+		var links = document.evaluate('./tbody/tr/td/a[contains("'+GM_listValues().join()+'",@title)]', map, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		for (var i = 0; i < links.snapshotLength; i++)
 		{
-			if (val != 'map')
-			{
-				var element = document.evaluate("./table/tbody/tr/td[@title='"+val+"']/a", div, null, XPathResult.ANY, null).iterateNext();
-				element.innerHTML = '&#9650;';
-			}
+			var element = links.snapshotItem(i);
+			element.innerHTML = '&#9650;';
 		}
+
 	}
 
 }
